@@ -1,45 +1,79 @@
 import { Injectable } from '@angular/core';
-import { Socket } from 'ngx-socket-io'
+import { Socket } from 'ngx-socket-io';
+import { Usuario } from '../models/usuario.model';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class WebsocketService {
+  public socketStatus = false;
+  public usuario: Usuario = null;
 
-  public socketStatus: boolean = false;
-
-
-  constructor(private socket: Socket ) {
+  constructor(private socket: Socket) {
+    this.cargarUsuarioStorage();
     this.ckeckStatus();
-   }
+  }
 
-
-
-  ckeckStatus() {
-    this.socket.on( 'connect', () => {
+  ckeckStatus(): any {
+    this.socket.on('connect', () => {
       console.log('Conectado al servidor');
       this.socketStatus = true;
     });
 
-
-    this.socket.on( 'disconnect', () => {
+    this.socket.on('disconnect', () => {
       console.log('Desconectado al servidor');
       this.socketStatus = false;
     });
-}
+  }
 
+  // EMITE CUALQUIER EVENTO
+  emit(evento: string, payload?: any, callback?: Function): any {
+    console.log('Emitiendo mensaje');
+    this.socket.emit(evento, payload, callback);
+  }
 
-// EMITE CUALQUIER EVENTO
-  emit( evento: string, payload?: any, callback?: Function ) {
+  // ESCUCHA CUALQUIER EVENTO
 
-    console.log('Emitiendo mensaje')
-    this.socket.emit( evento, payload, callback );
-}
+  listen(evento: string): any {
+    return this.socket.fromEvent(evento);
+  }
 
-// ESCUCHA CUALQUIER EVENTO
+  // LOGIN WS
 
-listen ( evento: string ) {
-  return this.socket.fromEvent( evento );
-}
+  loginWS(nombre: string): any {
+    // podemos mandar un token de JWT y comprobar que tiene ese token en el lado del server
 
+    // this.socket.emit( 'cofigurar-usuario', { nombre }, ( resp ) => {
+    //   console.log(resp);
+    // });
+
+    return new Promise((resolve, reject) => {
+      this.emit('configurar-usuario', { nombre }, (resp) => {
+
+        this.usuario = new Usuario(  nombre );
+
+        this.guardarStorageUsuario();
+
+        resolve();
+
+      });
+    });
+  }
+
+  getUsuario(): any {
+    return this.usuario;
+  }
+
+  guardarStorageUsuario(): any {
+
+    localStorage.setItem('usuario', JSON.stringify( this.usuario ));
+  }
+
+  cargarUsuarioStorage(): any {
+    if ( localStorage.getItem( 'usuario') ) {
+      this.usuario = JSON.parse( localStorage.getItem( 'usuario') );
+
+      this.loginWS( this.usuario.nombre );
+    }
+  }
 }
